@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+spec:
+  selector:
+    matchLabels:
+      run: catalog-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: hnrkjnsn/catalog-service:1.0.1
+          env:
+          - name: ImagePath
+            value: "/srv"
+          ports:
+          - containerPort: 8080
+            protocol: TCP

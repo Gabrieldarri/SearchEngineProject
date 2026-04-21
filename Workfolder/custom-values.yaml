@@ -1,0 +1,13 @@
+global:
+  postgresql:
+    fullnameOverride: ""
+
+postgresql:
+  auth:
+    postgresPassword: "SuperSecretPGAdminPa55word!"
+    username: "searcher"
+    password: "searcher$pa55word"
+    database: "searchengine"
+  persistence:
+    enabled: true
+    size: 2Gi

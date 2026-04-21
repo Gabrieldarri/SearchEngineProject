@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  searchapi1:
+    image: searchapi:latest
+    build:
+      context: .
+      dockerfile: SearchAPI/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - SQLITE_DATABASE=/data/mails.db
+    volumes:
+      - "C:\\Users\\marcu\\Mails.db:/data/mails.db"
+    expose:
+      - "8080"
+
+  searchapi2:
+    image: searchapi:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - SQLITE_DATABASE=/data/mails.db
+    volumes:
+      - "C:\\Users\\marcu\\Mails.db.part2.db:/data/mails.db"
+    expose:
+      - "8080"
+
+  loadbalancer:
+    image: loadbalancer:latest
+    build:
+      context: .
+      dockerfile: LoadBalancer/Dockerfile
+    environment:
+      - instances=http://searchapi1:8080;http://searchapi2:8080
+    depends_on:
+      - searchapi1
+      - searchapi2
+    ports:
+      - "8080:80"
+
+  websearch:
+    image: websearch:latest
+    build:
+      context: .
+      dockerfile: WebSearch/Dockerfile
+    depends_on:
+      - loadbalancer
+    ports:
+      - "5000:80"
+

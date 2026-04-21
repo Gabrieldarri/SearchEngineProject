@@ -1,0 +1,86 @@
+@page "/search"
+@page "/"
+@using System.Text.RegularExpressions
+@using Shared;
+@using Shared.Model
+@inject HttpClient Http
+
+<h1>Search</h1>
+
+<InputText @bind-Value="query"></InputText>
+<button @onclick="OnClickSearch">Search</button>
+
+@if (result != null)
+{
+    <p>Hits:  @result.NoOfHits <br /></p>
+
+    <p>Time used:  @result.TimeUsed.ToString()</p>
+    <table class="table">
+        <tbody>
+        @foreach (var dh in result.DocumentHits)
+        {
+            <tr>
+                <td>
+                    <a class="link-info" href="" @onclick="() => OnClickDocUrl(dh)"  @onclick:preventDefault>
+                        @dh.Document.Url</a>
+                    (# hits: @dh.Hits.Count)
+                </td>
+
+            </tr>
+        }
+        </tbody>
+    </table>
+    <ModalDialog @ref="@modalDialog" Title="Indhold">
+        <div class="row">
+            <h3>@currentDocumentHit.Document.Url</h3>
+            <h4>Hits: @ListToString(currentDocumentHit.Hits) - missing: @ListToString(currentDocumentHit.Missing)</h4>
+            <hr>
+            <p>@((MarkupString)@fileContent)</p>
+            <button class="btn btn-primary" @onclick="() => modalDialog.Close()">Close</button>
+        </div>
+    </ModalDialog>
+    
+}
+@code {
+    // used by the modal dialog
+    private DocumentHit currentDocumentHit = EmptyDocumentHit(); 
+    
+    private string fileContent = "";
+
+    private string query = "";
+
+    private SearchLogicProxy mLogic = new SearchLogicProxy();
+
+    private SearchResult? result;
+
+    private static DocumentHit EmptyDocumentHit()
+    {
+        DocumentHit res = new();
+        res.Document = new();
+        res.Document.Url = "";
+        res.Missing = new();
+        res.Hits = new();
+        return res;
+    }
+
+    private async Task OnClickSearch()
+    {
+        result = await mLogic.Search(query.Split(" "), 10);
+    }
+
+    private async Task OnClickDocUrl(DocumentHit dh)
+    {
+        fileContent = await mLogic.GetFileContent(dh.Document.Url);
+        // mark all words from query...
+        foreach (var qWord in query.Split(" "))
+            fileContent = Regex.Replace(fileContent, qWord, $"<b>{qWord}</b>");
+
+        currentDocumentHit = dh;
+        modalDialog.Open();
+    }
+
+    
+    private ModalDialog? modalDialog { get; set; }
+    
+    private string ListToString(List<string> s) => s.Count == 0?"[]":$"[{String.Join(',', s)}]";
+}
