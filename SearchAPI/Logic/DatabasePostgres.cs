@@ -13,9 +13,11 @@ public class DatabasePostgres : IDatabase
 
         private Dictionary<string, int> mWords = null;
 
-        public DatabasePostgres()
+        public DatabasePostgres() : this(Paths.POSTGRES_DATABASE) { }
+
+        public DatabasePostgres(string connectionString)
         {
-            _connection = new NpgsqlConnection(Paths.POSTGRES_DATABASE);
+            _connection = new NpgsqlConnection(connectionString);
             _connection.Open();
         }
 
@@ -71,7 +73,23 @@ public class DatabasePostgres : IDatabase
 
         public List<string> GetHits(int docId, List<int> wordIds)
         {
-            throw new NotImplementedException();
+            if (wordIds.Count == 0)
+                return new List<string>();
+
+            var sql = "SELECT wordId FROM Occ WHERE ";
+            sql += "wordId in " + AsString(wordIds) + " AND docId = " + docId;
+
+            var selectCmd = _connection.CreateCommand();
+            selectCmd.CommandText = sql;
+
+            var present = new List<int>();
+            using (var reader = selectCmd.ExecuteReader())
+            {
+                while (reader.Read())
+                    present.Add(reader.GetInt32(0));
+            }
+
+            return WordsFromIds(present);
         }
 
         public Dictionary<string, int> GetAllWords()

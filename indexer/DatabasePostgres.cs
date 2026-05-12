@@ -9,9 +9,11 @@ public class DatabasePostgres : IDatabase
 {
     private readonly NpgsqlConnection _connection;
 
-    public DatabasePostgres()
+    public DatabasePostgres() : this(Paths.POSTGRES_DATABASE) { }
+
+    public DatabasePostgres(string connectionString)
     {
-        var csb = new NpgsqlConnectionStringBuilder(Paths.POSTGRES_DATABASE);
+        var csb = new NpgsqlConnectionStringBuilder(connectionString);
         // ensure port/host are parsed correctly
         if (string.IsNullOrEmpty(csb.Host)) csb.Host = "127.0.0.1";
         if (csb.Port == 0) csb.Port = 5432;

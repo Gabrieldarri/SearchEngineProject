@@ -1,7 +1,10 @@
 using Shared.Model;
 using Microsoft.AspNetCore.Mvc;
 using SearchAPI.Logic;
-using System.IO;
+using System.Net.Http.Json;
+using System.Text.Json;
+using StackExchange.Redis;
+using ISearchDatabase = SearchAPI.Logic.IDatabase;
 
 namespace SearchAPI.Controllers;
 
@@ -9,53 +12,93 @@ namespace SearchAPI.Controllers;
 [Route("api")]
 public class SearchController : ControllerBase
 {
-    // Use a composite database that queries both sqlite and postgres so
-    // reception can split indexes between them. If Postgres is not available
-    // fall back to a second sqlite database file so the API still works.
-    private static IDatabase mDatabase;
+    private static readonly ISearchDatabase mDatabase;
+    private static readonly string? mTermNetUrl = Environment.GetEnvironmentVariable("TERMNET_URL");
+    private static readonly HttpClient mHttp = new();
+    private static readonly IConnectionMultiplexer? mRedis;
+    private readonly ILogger<SearchController> _logger;
+
+    public SearchController(ILogger<SearchController> logger)
+    {
+        _logger = logger;
+    }
 
     static SearchController()
     {
-        IDatabase a = new DatabaseSqlite();
-        IDatabase b = null;
-        try
+        ISearchDatabase a = new DatabasePostgres();
+        var cs2 = Shared.Paths.POSTGRES_DATABASE_2;
+        mDatabase = !string.IsNullOrEmpty(cs2)
+            ? new CompositeDatabase(a, new DatabasePostgres(cs2))
+            : a;
+
+        var redisUrl = Shared.Paths.REDIS_URL;
+        if (!string.IsNullOrEmpty(redisUrl))
         {
-            b = new DatabasePostgres();
+            try { mRedis = ConnectionMultiplexer.Connect(redisUrl); }
+            catch { }
         }
-        catch
+    }
+
+    [HttpGet("search/{query}/{maxAmount}/{termNets?}")]
+    public async Task<SearchResult> Search(string query, int maxAmount, string? termNets = null)
+    {
+        var cacheKey = $"search:{query}:{maxAmount}:{termNets}";
+
+        if (mRedis != null)
         {
-            // Postgres not available — fall back to a second sqlite file
-            var altPath = Shared.Paths.SQLITE_DATABASE + ".part2.db";
-            b = new DatabaseSqlite(altPath);
+            var db = mRedis.GetDatabase();
+            var cached = await db.StringGetAsync(cacheKey);
+            if (cached.HasValue)
+            {
+                _logger.LogInformation("Cache HIT: query={Query} nets={TermNets}", query, termNets ?? "none");
+                return JsonSerializer.Deserialize<SearchResult>((string)cached!)!;
+            }
         }
 
-        mDatabase = new CompositeDatabase(a, b);
-    }
-    
-    [HttpGet]
-    [Route("search/{query}/{maxAmount}")]
-    public SearchResult Search(string query, int maxAmount)
-    {
-        var logic = new SearchLogic(mDatabase);
-        var result = logic.Search(query.Split(","), maxAmount);
+        _logger.LogInformation("Cache MISS: query={Query} nets={TermNets} - searching database", query, termNets ?? "none");
+
+        var words = query.Split(",");
+        if (!string.IsNullOrEmpty(termNets) && !string.IsNullOrEmpty(mTermNetUrl))
+            words = await ExpandWithSynonyms(words, termNets);
+
+        var result = new SearchLogic(mDatabase).Search(words, maxAmount);
+
+        if (mRedis != null)
+        {
+            var db = mRedis.GetDatabase();
+            await db.StringSetAsync(cacheKey, JsonSerializer.Serialize(result), TimeSpan.FromMinutes(30));
+        }
+
         return result;
     }
 
-    [HttpGet]
-    [Route("ping")]
-    public string? Ping()
+    [HttpGet("termnets")]
+    public async Task<List<string>> GetTermNets()
     {
-        return Environment.GetEnvironmentVariable("id");
+        if (string.IsNullOrEmpty(mTermNetUrl)) return new();
+        try { return await mHttp.GetFromJsonAsync<List<string>>($"{mTermNetUrl}/api/termnets") ?? new(); }
+        catch { return new(); }
     }
-    
-    [HttpGet]
-    [Route("getfile")]
-    public string GetFile([FromQuery] string path)
+
+    [HttpGet("ping")]
+    public string? Ping() => Environment.GetEnvironmentVariable("id");
+
+    [HttpGet("getfile")]
+    public string GetFile([FromQuery] string path) => System.IO.File.ReadAllText(path);
+
+    private async Task<string[]> ExpandWithSynonyms(string[] words, string termNets)
     {
-        var uri = "file://" + path;
-        var s = System.IO.File.ReadAllText(path);
-        return s;
+        var tasks = words.Select(async word =>
+        {
+            try
+            {
+                var url = $"{mTermNetUrl}/api/synonyms/{word}?nets={termNets}";
+                var syns = await mHttp.GetFromJsonAsync<List<SynonymEntry>>(url);
+                return syns?.Select(s => s.Word) ?? Enumerable.Empty<string>();
+            }
+            catch { return Enumerable.Empty<string>(); }
+        });
+        var results = await Task.WhenAll(tasks);
+        return words.Concat(results.SelectMany(r => r)).Distinct().ToArray();
     }
-    
-    
 }

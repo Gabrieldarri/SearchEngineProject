@@ -1,0 +1,89 @@
+Her er den komplette guide:
+
+Forudsætninger (installer én gang)
+Docker Desktop
+.NET 10 SDK
+Minikube
+kubectl
+Helm
+Docker Compose
+1. Start Docker Desktop
+
+2. Start alle services:
+
+
+docker compose up --build
+3. Indeksér data — kun første gang (ny terminal):
+
+
+cd indexer
+dotnet run
+Vælg 2 for two-shard Postgres. Vent til færdigt.
+
+4. Åbn: http://localhost:5000
+
+Næste gang: bare docker compose up
+
+Kubernetes + Monitoring
+1. Start Docker Desktop
+
+2. Start Minikube:
+
+
+minikube start
+3. Byg images ind i Minikube:
+
+
+& minikube -p minikube docker-env --shell powershell | Invoke-Expression
+docker build -t searchapi:latest -f SearchAPI/Dockerfile .
+docker build -t loadbalancer:latest -f LoadBalancer/Dockerfile .
+docker build -t termnet:latest -f TermNet/Dockerfile .
+docker build -t websearch:latest -f WebSearch/Dockerfile .
+4. Deploy til Kubernetes:
+
+
+kubectl apply -f Minikube-Env/
+5. Installer monitoring (kun første gang):
+
+
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace -f Minikube-Env/helm-values/prometheus-values.yaml
+
+helm upgrade --install loki grafana/loki-stack --namespace monitoring -f Minikube-Env/helm-values/loki-values.yaml
+6. Indeksér data — kun første gang:
+
+
+kubectl port-forward svc/postgres1 5433:5432
+Ny terminal:
+
+
+kubectl port-forward svc/postgres2 5434:5432
+Ny terminal:
+
+
+$env:POSTGRES_DATABASE = "Server=127.0.0.1;Port=5433;User Id=postgres;Password=1234;Database=searchlarge"
+$env:POSTGRES_DATABASE_2 = "Server=127.0.0.1;Port=5434;User Id=postgres;Password=1234;Database=searchlarge"
+cd indexer
+dotnet run
+Vælg 2. Luk port-forward terminals bagefter.
+
+7. Åbn appen (ny terminal):
+
+
+kubectl port-forward svc/websearch 5000:80
+→ http://localhost:5000
+
+8. Åbn Grafana (ny terminal):
+
+
+minikube service loki-grafana -n monitoring
+Næste gang (Kubernetes):
+
+
+minikube start
+kubectl apply -f Minikube-Env/
+kubectl port-forward svc/websearch 5000:80
+minikube service loki-grafana -n monitoring

@@ -4,11 +4,26 @@
 @using Shared;
 @using Shared.Model
 @inject HttpClient Http
+@inject IConfiguration Configuration
 
 <h1>Search</h1>
 
 <InputText @bind-Value="query"></InputText>
 <button @onclick="OnClickSearch">Search</button>
+
+@if (availableTermNets.Count > 0)
+{
+    <div style="margin-top: 8px">
+        <span>Synonyms:</span>
+        @foreach (var net in availableTermNets)
+        {
+            <label style="margin-left: 12px">
+                <input type="checkbox" @onchange="e => ToggleTermNet(net, (bool)e.Value!)" />
+                @net
+            </label>
+        }
+    </div>
+}
 
 @if (result != null)
 {
@@ -25,7 +40,6 @@
                         @dh.Document.Url</a>
                     (# hits: @dh.Hits.Count)
                 </td>
-
             </tr>
         }
         </tbody>
@@ -39,17 +53,21 @@
             <button class="btn btn-primary" @onclick="() => modalDialog.Close()">Close</button>
         </div>
     </ModalDialog>
-    
 }
 @code {
-    // used by the modal dialog
-    private DocumentHit currentDocumentHit = EmptyDocumentHit(); 
-    
+    private DocumentHit currentDocumentHit = EmptyDocumentHit();
     private string fileContent = "";
-
     private string query = "";
+    private SearchLogicProxy mLogic = null!;
+    private List<string> availableTermNets = new();
+    private HashSet<string> selectedTermNets = new();
 
-    private SearchLogicProxy mLogic = new SearchLogicProxy();
+    protected override async Task OnInitializedAsync()
+    {
+        var url = Configuration["ApiBaseUrl"] ?? "";
+        mLogic = new SearchLogicProxy(url, Http);
+        availableTermNets = await mLogic.GetTermNets();
+    }
 
     private SearchResult? result;
 
@@ -63,15 +81,21 @@
         return res;
     }
 
+    private void ToggleTermNet(string net, bool selected)
+    {
+        if (selected) selectedTermNets.Add(net);
+        else selectedTermNets.Remove(net);
+    }
+
     private async Task OnClickSearch()
     {
-        result = await mLogic.Search(query.Split(" "), 10);
+        var nets = selectedTermNets.Count > 0 ? selectedTermNets.ToArray() : null;
+        result = await mLogic.Search(query.Split(" "), 10, nets);
     }
 
     private async Task OnClickDocUrl(DocumentHit dh)
     {
         fileContent = await mLogic.GetFileContent(dh.Document.Url);
-        // mark all words from query...
         foreach (var qWord in query.Split(" "))
             fileContent = Regex.Replace(fileContent, qWord, $"<b>{qWord}</b>");
 
@@ -79,8 +103,7 @@
         modalDialog.Open();
     }
 
-    
     private ModalDialog? modalDialog { get; set; }
-    
+
     private string ListToString(List<string> s) => s.Count == 0?"[]":$"[{String.Join(',', s)}]";
 }
