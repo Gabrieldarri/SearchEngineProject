@@ -28,15 +28,16 @@ public class CompositeDatabase : IDatabase
         return dbA.GetDocDetails(docId) ?? dbB.GetDocDetails(docId);
     }
 
-    public List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount)
+    public List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount, int offset)
     {
-        var taskA = Task.Run(() => dbA.GetDocuments(wordIds, maxAmount));
-        var taskB = Task.Run(() => dbB.GetDocuments(wordIds, maxAmount));
+        var fetch = maxAmount + offset;
+        var taskA = Task.Run(() => dbA.GetDocuments(wordIds, fetch, 0));
+        var taskB = Task.Run(() => dbB.GetDocuments(wordIds, fetch, 0));
         Task.WhenAll(taskA, taskB).Wait();
         var combined = new List<(int docId, int hits)>(taskA.Result);
         combined.AddRange(taskB.Result);
         combined.Sort((x, y) => y.hits.CompareTo(x.hits));
-        return combined;
+        return combined.Skip(offset).Take(maxAmount).ToList();
     }
 
     public int CountDocuments(List<int> wordIds)

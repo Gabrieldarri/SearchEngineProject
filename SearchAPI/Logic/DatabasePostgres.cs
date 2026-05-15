@@ -33,12 +33,12 @@ public class DatabasePostgres : IDatabase
 
 
         // key is the id of the document, the value is number of search words in the document
-        public List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount)
+        public List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount, int offset)
         {
             var res = new List<(int docId, int hits)>();
             var sql = "SELECT docId, COUNT(wordId) as count FROM Occ where ";
             sql += "wordId in " + AsString(wordIds) + " GROUP BY docId ";
-            sql += $"ORDER BY count DESC LIMIT {maxAmount};";
+            sql += $"ORDER BY count DESC LIMIT {maxAmount} OFFSET {offset};";
 
             var selectCmd = _connection.CreateCommand();
             selectCmd.CommandText = sql;

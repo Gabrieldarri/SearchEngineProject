@@ -27,16 +27,14 @@
 
 @if (result != null)
 {
-    <p>Hits:  @result.NoOfHits <br /></p>
-
-    <p>Time used:  @result.TimeUsed.ToString()</p>
+    <p>Hits: @result.NoOfHits &nbsp;|&nbsp; Time: @result.TimeUsed.ToString()</p>
     <table class="table">
         <tbody>
         @foreach (var dh in result.DocumentHits)
         {
             <tr>
                 <td>
-                    <a class="link-info" href="" @onclick="() => OnClickDocUrl(dh)"  @onclick:preventDefault>
+                    <a class="link-info" href="" @onclick="() => OnClickDocUrl(dh)" @onclick:preventDefault>
                         @dh.Document.Url</a>
                     (# hits: @dh.Hits.Count)
                 </td>
@@ -44,6 +42,11 @@
         }
         </tbody>
     </table>
+    <div style="margin-top: 8px">
+        <button @onclick="PrevPage" disabled="@(currentPage == 0)">← Forrige</button>
+        <span style="margin: 0 12px">Side @(currentPage + 1) af @TotalPages</span>
+        <button @onclick="NextPage" disabled="@(currentPage + 1 >= TotalPages)">Næste →</button>
+    </div>
     <ModalDialog @ref="@modalDialog" Title="Indhold">
         <div class="row">
             <h3>@currentDocumentHit.Document.Url</h3>
@@ -61,6 +64,9 @@
     private SearchLogicProxy mLogic = null!;
     private List<string> availableTermNets = new();
     private HashSet<string> selectedTermNets = new();
+    private int currentPage = 0;
+    private const int pageSize = 10;
+    private int TotalPages => result == null ? 1 : (int)Math.Ceiling(result.NoOfHits / (double)pageSize);
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,8 +95,26 @@
 
     private async Task OnClickSearch()
     {
+        currentPage = 0;
+        await LoadPage();
+    }
+
+    private async Task NextPage()
+    {
+        currentPage++;
+        await LoadPage();
+    }
+
+    private async Task PrevPage()
+    {
+        currentPage--;
+        await LoadPage();
+    }
+
+    private async Task LoadPage()
+    {
         var nets = selectedTermNets.Count > 0 ? selectedTermNets.ToArray() : null;
-        result = await mLogic.Search(query.Split(" "), 10, nets);
+        result = await mLogic.Search(query.Split(" "), pageSize, nets, currentPage * pageSize);
     }
 
     private async Task OnClickDocUrl(DocumentHit dh)

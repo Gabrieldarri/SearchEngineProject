@@ -18,7 +18,7 @@ namespace SearchAPI.Logic;
         /// contained in the document.
         /// Ordered decending by hits
         /// </summary>
-        List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount);
+        List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount, int offset);
         int CountDocuments(List<int> wordIds);
 
         /// <summary>

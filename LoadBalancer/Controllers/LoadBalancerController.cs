@@ -14,14 +14,14 @@ public class LoadBalancerController : ControllerBase
     public LoadBalancerController(ILogger<LoadBalancerController> logger) => _logger = logger;
 
     [HttpGet]
-    [Route("search/{query}/{maxAmount}/{termNets?}")]
-    public async Task<SearchResult> Search(string query, int maxAmount, string? termNets = null)
+    [Route("search/{query}/{maxAmount}/{offset}/{termNets?}")]
+    public async Task<SearchResult> Search(string query, int maxAmount, int offset = 0, string? termNets = null)
     {
         HttpClient http = new HttpClient();
         var instance = instances[next];
         next = (next + 1) % instances.Length;
-        _logger.LogInformation("Forwarding: query={Query} -> {Instance}", query, instance);
-        var url = $"{instance}/api/search/{query}/{maxAmount}";
+        _logger.LogInformation("Forwarding: query={Query} offset={Offset} -> {Instance}", query, offset, instance);
+        var url = $"{instance}/api/search/{query}/{maxAmount}/{offset}";
         if (!string.IsNullOrEmpty(termNets)) url += $"/{termNets}";
         return await http.GetFromJsonAsync<SearchResult>(url);
     }

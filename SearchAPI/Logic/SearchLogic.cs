@@ -15,7 +15,7 @@ namespace SearchAPI.Logic;
         /* Perform search of documents containing words from query. The result will
          * contain details about amost maxAmount of documents.
          */
-        public SearchResult Search(String[] query, int maxAmount)
+        public SearchResult Search(String[] query, int maxAmount, int offset = 0)
         {
             List<string> ignored;
 
@@ -32,7 +32,7 @@ namespace SearchAPI.Logic;
                                            TimeUsed = DateTime.Now - start};
             
             var totalCount = mDatabase.CountDocuments(wordIds);
-            var docIds = mDatabase.GetDocuments(wordIds, maxAmount);
+            var docIds = mDatabase.GetDocuments(wordIds, maxAmount, offset);
             var top = docIds.Select(p => p.docId).ToList();
 
             // compose the result.

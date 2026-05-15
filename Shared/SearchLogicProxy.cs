@@ -18,10 +18,10 @@ public class SearchLogicProxy
         mHttp = http ?? new HttpClient();
     }
 
-    public async Task<SearchResult> Search(string[] query, int maxAmount, string[]? termNets = null)
+    public async Task<SearchResult> Search(string[] query, int maxAmount, string[]? termNets = null, int offset = 0)
     {
         var q = String.Join(",", query);
-        var url = $"{serverEndPoint}/search/{q}/{maxAmount}";
+        var url = $"{serverEndPoint}/search/{q}/{maxAmount}/{offset}";
         if (termNets != null && termNets.Length > 0)
             url += $"/{String.Join(",", termNets)}";
         return await mHttp.GetFromJsonAsync<SearchResult>(url);

@@ -39,10 +39,10 @@ public class SearchController : ControllerBase
         }
     }
 
-    [HttpGet("search/{query}/{maxAmount}/{termNets?}")]
-    public async Task<SearchResult> Search(string query, int maxAmount, string? termNets = null)
+    [HttpGet("search/{query}/{maxAmount}/{offset}/{termNets?}")]
+    public async Task<SearchResult> Search(string query, int maxAmount, int offset = 0, string? termNets = null)
     {
-        var cacheKey = $"search:{query}:{maxAmount}:{termNets}";
+        var cacheKey = $"search:{query}:{maxAmount}:{offset}:{termNets}";
 
         if (mRedis != null)
         {
@@ -59,8 +59,8 @@ public class SearchController : ControllerBase
         if (!string.IsNullOrEmpty(termNets) && !string.IsNullOrEmpty(mTermNetUrl))
             words = await ExpandWithSynonyms(words, termNets);
 
-        var result = new SearchLogic(mDatabase).Search(words, maxAmount);
-        _logger.LogInformation("GET search: word={Query} nets={TermNets} hits={Hits} [CACHE MISS]", query, termNets ?? "none", result.NoOfHits);
+        var result = new SearchLogic(mDatabase).Search(words, maxAmount, offset);
+        _logger.LogInformation("GET search: word={Query} offset={Offset} nets={TermNets} hits={Hits} [CACHE MISS]", query, offset, termNets ?? "none", result.NoOfHits);
 
         if (mRedis != null)
         {
