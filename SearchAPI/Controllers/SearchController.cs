@@ -88,10 +88,12 @@ public class SearchController : ControllerBase
     public string? Ping() => Environment.GetEnvironmentVariable("id");
 
     [HttpGet("getfile")]
-    public string GetFile([FromQuery] string path)
+    public IActionResult GetFile([FromQuery] string path)
     {
         _logger.LogInformation("GetFile: path={Path}", path);
-        return System.IO.File.ReadAllText(path);
+        var content = mDatabase.GetFileContent(path);
+        if (content == null) return NotFound();
+        return Ok(content);
     }
 
     private async Task<string[]> ExpandWithSynonyms(string[] words, string termNets)

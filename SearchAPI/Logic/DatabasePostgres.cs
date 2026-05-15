@@ -105,23 +105,24 @@ public class DatabasePostgres : IDatabase
 
         public BEDocument GetDocDetails(int docId)
         {
-
             var selectCmd = _connection.CreateCommand();
-            selectCmd.CommandText = $"SELECT * FROM document where id = {docId}";
+            selectCmd.CommandText = $"SELECT id, url, idxTime, creationTime FROM document where id = {docId}";
 
             using (var reader = selectCmd.ExecuteReader())
             {
                 if (reader.Read())
-                {
-                    var id = reader.GetInt32(0);
-                    var url = reader.GetString(1);
-                    var idxTime = reader.GetDateTime(2);
-                    var creationTime = reader.GetDateTime(3);
-
-                    return new BEDocument { Id = id, Url = url, IdxTime = idxTime, CreationTime = creationTime };
-                }
+                    return new BEDocument { Id = reader.GetInt32(0), Url = reader.GetString(1), IdxTime = reader.GetDateTime(2), CreationTime = reader.GetDateTime(3) };
             }
             return null;
+        }
+
+        public string? GetFileContent(string url)
+        {
+            var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT content FROM document WHERE url = @url";
+            cmd.Parameters.AddWithValue("url", url);
+            var result = cmd.ExecuteScalar();
+            return result as string;
         }
 
         /* Return a list of id's for words; all them among wordIds, but not present in the document

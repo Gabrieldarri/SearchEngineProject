@@ -48,6 +48,9 @@ public class CompositeDatabase : IDatabase
         return taskA.Result + taskB.Result;
     }
 
+    public string? GetFileContent(string url) =>
+        dbA.GetFileContent(url) ?? dbB.GetFileContent(url);
+
     public List<string> GetMissing(int docId, List<int> wordIds)
     {
         var r = dbA.GetMissing(docId, wordIds);

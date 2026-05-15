@@ -34,4 +34,13 @@ public class LoadBalancerController : ControllerBase
         var url = $"{instances[0]}/api/termnets";
         return await http.GetFromJsonAsync<List<string>>(url) ?? new();
     }
+
+    [HttpGet]
+    [Route("getfile")]
+    public async Task<string> GetFile([FromQuery] string path)
+    {
+        HttpClient http = new HttpClient();
+        var encodedPath = Uri.EscapeDataString(path);
+        return await http.GetStringAsync($"{instances[0]}/api/getfile?path={encodedPath}");
+    }
 }
