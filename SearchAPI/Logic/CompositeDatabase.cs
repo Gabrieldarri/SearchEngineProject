@@ -28,15 +28,23 @@ public class CompositeDatabase : IDatabase
         return dbA.GetDocDetails(docId) ?? dbB.GetDocDetails(docId);
     }
 
-    public List<(int docId, int hits)> GetDocuments(List<int> wordIds)
+    public List<(int docId, int hits)> GetDocuments(List<int> wordIds, int maxAmount)
     {
-        var taskA = Task.Run(() => dbA.GetDocuments(wordIds));
-        var taskB = Task.Run(() => dbB.GetDocuments(wordIds));
+        var taskA = Task.Run(() => dbA.GetDocuments(wordIds, maxAmount));
+        var taskB = Task.Run(() => dbB.GetDocuments(wordIds, maxAmount));
         Task.WhenAll(taskA, taskB).Wait();
         var combined = new List<(int docId, int hits)>(taskA.Result);
         combined.AddRange(taskB.Result);
         combined.Sort((x, y) => y.hits.CompareTo(x.hits));
         return combined;
+    }
+
+    public int CountDocuments(List<int> wordIds)
+    {
+        var taskA = Task.Run(() => dbA.CountDocuments(wordIds));
+        var taskB = Task.Run(() => dbB.CountDocuments(wordIds));
+        Task.WhenAll(taskA, taskB).Wait();
+        return taskA.Result + taskB.Result;
     }
 
     public List<string> GetMissing(int docId, List<int> wordIds)

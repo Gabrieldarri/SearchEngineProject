@@ -6,10 +6,7 @@ namespace SearchAPI.Logic;
     public class SearchLogic
     {
         private IDatabase mDatabase;
-
-        // all words from the database in a cache. The key is the
-        // word itself and the value is the id.
-        private Dictionary<string, int>? mWords;
+        private static Dictionary<string, int>? mWords;
 
         public SearchLogic(IDatabase database) {
             mDatabase = database;
@@ -34,13 +31,9 @@ namespace SearchAPI.Logic;
                                            Ignored = ignored, 
                                            TimeUsed = DateTime.Now - start};
             
-            // perform the search - get all docIds
-            var docIds =  mDatabase.GetDocuments(wordIds);
-
-            // get ids for the first maxAmount             
-            var top = new List<int>();
-            foreach (var p in docIds.GetRange(0, Math.Min(maxAmount, docIds.Count)))
-                top.Add(p.docId);
+            var countTask = Task.Run(() => mDatabase.CountDocuments(wordIds));
+            var docIds = mDatabase.GetDocuments(wordIds, maxAmount);
+            var top = docIds.Select(p => p.docId).ToList();
 
             // compose the result.
             // all the documentHit
@@ -56,10 +49,10 @@ namespace SearchAPI.Logic;
                 docresult.Add(docHit);
             }
 
-            return new SearchResult{ Query = query, 
-                                     NoOfHits = docIds.Count,
-                                     DocumentHits = docresult, 
-                                     Ignored = ignored, 
+            return new SearchResult{ Query = query,
+                                     NoOfHits = countTask.Result,
+                                     DocumentHits = docresult,
+                                     Ignored = ignored,
                                      TimeUsed = DateTime.Now - start };
         }
         
