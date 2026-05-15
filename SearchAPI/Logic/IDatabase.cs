@@ -39,6 +39,6 @@ namespace SearchAPI.Logic;
         /// </summary>
         /// <returns>all words - the key is the word itself, and value is the id</returns>
         Dictionary<string, int> GetAllWords();
-        string? GetFileContent(string url);
+        string? GetFileContent(int docId);
         
     }
