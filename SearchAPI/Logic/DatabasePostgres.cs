@@ -118,13 +118,13 @@ public class DatabasePostgres : IDatabase
             return null;
         }
 
-        public string? GetFileContent(string url)
+        public string? GetFileContent(int docId)
         {
             using var conn = new NpgsqlConnection(_connectionString);
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT content FROM document WHERE url = @url";
-            cmd.Parameters.AddWithValue("url", url);
+            cmd.CommandText = "SELECT content FROM document WHERE id = @docId";
+            cmd.Parameters.AddWithValue("docId", docId);
             var result = cmd.ExecuteScalar();
             return result == DBNull.Value ? null : result as string;
         }

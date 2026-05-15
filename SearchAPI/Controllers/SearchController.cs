@@ -88,10 +88,10 @@ public class SearchController : ControllerBase
     public string? Ping() => Environment.GetEnvironmentVariable("id");
 
     [HttpGet("getfile")]
-    public IActionResult GetFile([FromQuery] string path)
+    public IActionResult GetFile([FromQuery] int docId)
     {
-        _logger.LogInformation("GetFile: path={Path}", path);
-        var content = mDatabase.GetFileContent(path);
+        _logger.LogInformation("GetFile: docId={DocId}", docId);
+        var content = mDatabase.GetFileContent(docId);
         if (content == null) return NotFound();
         return Ok(content);
     }

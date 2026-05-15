@@ -119,7 +119,7 @@
 
     private async Task OnClickDocUrl(DocumentHit dh)
     {
-        fileContent = await mLogic.GetFileContent(dh.Document.Url);
+        fileContent = await mLogic.GetFileContent(dh.Document.Id);
         foreach (var qWord in query.Split(" "))
             fileContent = Regex.Replace(fileContent, qWord, $"<b>{qWord}</b>");
 

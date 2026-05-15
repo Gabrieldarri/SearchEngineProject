@@ -33,9 +33,8 @@ public class SearchLogicProxy
         catch { return new(); }
     }
 
-    public async Task<string> GetFileContent(string url)
+    public async Task<string> GetFileContent(int docId)
     {
-        var encodedurl = Uri.EscapeDataString(url);
-        return await mHttp.GetStringAsync($"{serverEndPoint}/getfile?path={encodedurl}");
+        return await mHttp.GetStringAsync($"{serverEndPoint}/getfile?docId={docId}");
     }
 }

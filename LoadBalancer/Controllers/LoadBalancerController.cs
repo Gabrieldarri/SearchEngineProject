@@ -37,10 +37,9 @@ public class LoadBalancerController : ControllerBase
 
     [HttpGet]
     [Route("getfile")]
-    public async Task<string> GetFile([FromQuery] string path)
+    public async Task<string> GetFile([FromQuery] int docId)
     {
         HttpClient http = new HttpClient();
-        var encodedPath = Uri.EscapeDataString(path);
-        return await http.GetStringAsync($"{instances[0]}/api/getfile?path={encodedPath}");
+        return await http.GetStringAsync($"{instances[0]}/api/getfile?docId={docId}");
     }
 }
