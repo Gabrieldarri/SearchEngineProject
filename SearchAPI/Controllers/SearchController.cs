@@ -50,18 +50,17 @@ public class SearchController : ControllerBase
             var cached = await db.StringGetAsync(cacheKey);
             if (cached.HasValue)
             {
-                _logger.LogInformation("Cache HIT: query={Query} nets={TermNets}", query, termNets ?? "none");
+                _logger.LogInformation("GET search: word={Query} nets={TermNets} [CACHE HIT]", query, termNets ?? "none");
                 return JsonSerializer.Deserialize<SearchResult>((string)cached!)!;
             }
         }
-
-        _logger.LogInformation("Cache MISS: query={Query} nets={TermNets} - searching database", query, termNets ?? "none");
 
         var words = query.Split(",");
         if (!string.IsNullOrEmpty(termNets) && !string.IsNullOrEmpty(mTermNetUrl))
             words = await ExpandWithSynonyms(words, termNets);
 
         var result = new SearchLogic(mDatabase).Search(words, maxAmount);
+        _logger.LogInformation("GET search: word={Query} nets={TermNets} hits={Hits} [CACHE MISS]", query, termNets ?? "none", result.NoOfHits);
 
         if (mRedis != null)
         {
@@ -76,7 +75,12 @@ public class SearchController : ControllerBase
     public async Task<List<string>> GetTermNets()
     {
         if (string.IsNullOrEmpty(mTermNetUrl)) return new();
-        try { return await mHttp.GetFromJsonAsync<List<string>>($"{mTermNetUrl}/api/termnets") ?? new(); }
+        try
+        {
+            var nets = await mHttp.GetFromJsonAsync<List<string>>($"{mTermNetUrl}/api/termnets") ?? new();
+            _logger.LogInformation("GetTermNets: returned={Count}", nets.Count);
+            return nets;
+        }
         catch { return new(); }
     }
 
@@ -84,7 +88,11 @@ public class SearchController : ControllerBase
     public string? Ping() => Environment.GetEnvironmentVariable("id");
 
     [HttpGet("getfile")]
-    public string GetFile([FromQuery] string path) => System.IO.File.ReadAllText(path);
+    public string GetFile([FromQuery] string path)
+    {
+        _logger.LogInformation("GetFile: path={Path}", path);
+        return System.IO.File.ReadAllText(path);
+    }
 
     private async Task<string[]> ExpandWithSynonyms(string[] words, string termNets)
     {
