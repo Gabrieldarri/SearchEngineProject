@@ -10,6 +10,7 @@ using Npgsql;
 public class DatabasePostgres : IDatabase
 {
     private NpgsqlConnection _connection;
+    private readonly string _connectionString;
 
         private Dictionary<string, int> mWords = null;
 
@@ -17,6 +18,7 @@ public class DatabasePostgres : IDatabase
 
         public DatabasePostgres(string connectionString)
         {
+            _connectionString = connectionString;
             _connection = new NpgsqlConnection(connectionString);
             _connection.Open();
         }
@@ -118,11 +120,13 @@ public class DatabasePostgres : IDatabase
 
         public string? GetFileContent(string url)
         {
-            var cmd = _connection.CreateCommand();
+            using var conn = new NpgsqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT content FROM document WHERE url = @url";
             cmd.Parameters.AddWithValue("url", url);
             var result = cmd.ExecuteScalar();
-            return result as string;
+            return result == DBNull.Value ? null : result as string;
         }
 
         /* Return a list of id's for words; all them among wordIds, but not present in the document
