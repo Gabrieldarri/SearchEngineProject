@@ -31,7 +31,7 @@ namespace SearchAPI.Logic;
                                            Ignored = ignored, 
                                            TimeUsed = DateTime.Now - start};
             
-            var countTask = Task.Run(() => mDatabase.CountDocuments(wordIds));
+            var totalCount = mDatabase.CountDocuments(wordIds);
             var docIds = mDatabase.GetDocuments(wordIds, maxAmount);
             var top = docIds.Select(p => p.docId).ToList();
 
@@ -50,7 +50,7 @@ namespace SearchAPI.Logic;
             }
 
             return new SearchResult{ Query = query,
-                                     NoOfHits = countTask.Result,
+                                     NoOfHits = totalCount,
                                      DocumentHits = docresult,
                                      Ignored = ignored,
                                      TimeUsed = DateTime.Now - start };
