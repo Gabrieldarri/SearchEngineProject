@@ -30,9 +30,11 @@ public class CompositeDatabase : IDatabase
 
     public List<(int docId, int hits)> GetDocuments(List<int> wordIds)
     {
-        var combined = new List<(int docId, int hits)>();
-        combined.AddRange(dbA.GetDocuments(wordIds));
-        combined.AddRange(dbB.GetDocuments(wordIds));
+        var taskA = Task.Run(() => dbA.GetDocuments(wordIds));
+        var taskB = Task.Run(() => dbB.GetDocuments(wordIds));
+        Task.WhenAll(taskA, taskB).Wait();
+        var combined = new List<(int docId, int hits)>(taskA.Result);
+        combined.AddRange(taskB.Result);
         combined.Sort((x, y) => y.hits.CompareTo(x.hits));
         return combined;
     }
